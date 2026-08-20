@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import streamlit as st
 
@@ -70,7 +70,7 @@ def _logo_uri() -> str:
     return "data:image/png;base64," + base64.b64encode(LOGO_PATH.read_bytes()).decode()
 
 
-@st.cache_resource(show_spinner="Cargando catálogo…")
+@st.cache_resource(show_spinner=False)
 def _load_catalog_from_disk(path: str) -> Catalog:
     return Catalog.load(path)
 
@@ -80,19 +80,27 @@ def _fx_table(base: str):
     return fx_module.fetch(base)
 
 
-@st.cache_data(ttl=86400, show_spinner="Consultando referencia de mercado…")
-def _market_quote(family: str, api_key: Optional[str], usd_inr: float):
+@st.cache_data(ttl=86400, show_spinner=False)
+def _market_quote(family: str, api_key: Optional[str], usda_key: Optional[str], usd_inr: float):
     class _Fx:
         rates = {"INR": usd_inr}
 
-    return market.reference_price(family, api_key=api_key, fx=_Fx())
+    return market.reference_price(family, api_key=api_key, usda_key=usda_key, fx=_Fx())
 
 
-def _api_key() -> Optional[str]:
+def _api_keys() -> tuple[Optional[str], Optional[str]]:
+    """Obtiene claves de API de data.gov.in y USDA."""
     try:
-        return st.secrets.get("DATA_GOV_IN_API_KEY") or None
+        data_gov_key = st.secrets.get("DATA_GOV_IN_API_KEY") or None
     except Exception:
-        return None
+        data_gov_key = None
+
+    try:
+        usda_key = st.secrets.get("USDA_QUICKSTATS_API_KEY") or None
+    except Exception:
+        usda_key = None
+
+    return data_gov_key, usda_key
 
 
 # ---------------------------------------------------------------------------
@@ -153,21 +161,23 @@ def resolve_catalog(t: Translator) -> Optional[Catalog]:
 
     if Path(DEFAULT_INDEX).exists():
         try:
-            return _load_catalog_from_disk(str(DEFAULT_INDEX))
+            with st.spinner(t("catalog_loading")):
+                return _load_catalog_from_disk(str(DEFAULT_INDEX))
         except Exception as exc:  # pragma: no cover
             st.error(f"{t('catalog_missing')} {exc}")
 
-        # En Streamlit Cloud: intenta descargar desde Google Drive
+    # En Streamlit Cloud: intenta descargar desde Google Drive
     if "STREAMLIT" in __import__("sys").modules or True:  # Detecta si es Streamlit
         try:
             from tools.load_from_drive import ensure_catalog_exists
             if ensure_catalog_exists():
-                st.success("✓ Catálogo descargado desde Drive")
-                return _load_catalog_from_disk(str(DEFAULT_INDEX))
+                st.success(t("catalog_downloaded"))
+                with st.spinner(t("catalog_loading")):
+                    return _load_catalog_from_disk(str(DEFAULT_INDEX))
         except Exception as exc:
             pass  # Cae a la opción manual si falla
 
-  
+    st.warning(f"**{t('catalog_missing')}** {t('catalog_build')}")
     with st.expander(t("catalog_upload"), expanded=True):
         st.caption(t("catalog_session_note"))
         col_a, col_b = st.columns(2)
@@ -178,7 +188,7 @@ def resolve_catalog(t: Translator) -> Optional[Catalog]:
 
             from data_layer.catalog import build
 
-            with st.spinner("Procesando catálogo…"):
+            with st.spinner(t("catalog_processing")):
                 catalog = build(io.BytesIO(first.getvalue()), io.BytesIO(askrc.getvalue()))
             st.session_state["session_catalog"] = catalog
             st.rerun()
@@ -192,7 +202,7 @@ def resolve_catalog(t: Translator) -> Optional[Catalog]:
 def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, presentation: bool):
     products = [p for p in catalog.offerable if p.has_marker]
     if not products:
-        st.error("El catálogo no tiene ningún producto vigente con marcador numérico.")
+        st.error(t("catalog_no_products"))
         return
 
     families = sorted({p.family for p in products if p.family})
@@ -255,16 +265,16 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
             key="calc_cnat",
         )
         if reference:
-            st.caption(f"Rango típico {reference.range_text()} · {reference.source}")
+            st.caption(f"{t('typical_range')}: {reference.range_text()} · {reference.source}")
         else:
-            st.caption("Sin referencia pública para esta familia. Usa el CoA de tu materia prima.")
+            st.caption(t("catalog_no_reference"))
 
         c_oleo = st.number_input(
             f"{t('conc_oleoresin')} ({unit})",
             min_value=0.0, value=float(offered.midpoint), step=step, format="%.4g",
             key="calc_coleo",
         )
-        st.caption(f"Catálogo: **{offered.format()}** · {product.code}")
+        st.caption(f"{t('catalog_price_label')}: **{offered.format()}** · {product.code}")
 
         efficiency = st.slider(
             t("efficiency"), min_value=0.50, max_value=1.00,
@@ -280,11 +290,11 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
 
         if st.button(t("fetch_reference"), use_container_width=True):
             usd_inr = fx_table.rates.get("INR", 87.5)
-            quote = _market_quote(family, _api_key(), usd_inr)
+            api_key, usda_key = _api_keys()
+            quote = _market_quote(family, api_key, usda_key, usd_inr)
             st.session_state["market_quote"] = quote
             if quote is None:
-                st.info("Ninguna fuente respondió para esta familia. Revisa la clave de "
-                        "data.gov.in en `.streamlit/secrets.toml` o teclea el precio.")
+                st.info(t("market_no_connection"))
 
         quote = st.session_state.get("market_quote")
         if quote is not None:
@@ -454,7 +464,7 @@ def render_gap_report(t: Translator, candidate) -> None:
         for g in candidate.gaps
     ]
     if not rows:
-        st.caption("La especificación no traía parámetros verificables.")
+        st.caption(t("spec_no_params"))
         return
     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
     tone = "fail" if candidate.blocking else ("warn" if candidate.deviations else "ok")
@@ -492,7 +502,7 @@ def tab_recommender(t: Translator, catalog: Catalog):
     st.markdown(f'<div class="rb-note">{spec.summary()}</div>', unsafe_allow_html=True)
 
     if spec.competitor_code:
-        st.caption(f"Código de competidor detectado: {spec.competitor_code}")
+        st.caption(f"{t('competitor_detected')}: {spec.competitor_code}")
 
     if spec.is_empty:
         st.warning(t("rec_none"))
@@ -610,7 +620,7 @@ def _competitor_panel(t: Translator, catalog: Catalog):
                 if result.message:
                     st.error(result.message)
                 if result.replacement is not None:
-                    st.success(f"Vigente equivalente: {result.replacement.code} · "
+                    st.success(f"{t('equivalent_active')}: {result.replacement.code} · "
                                f"{result.replacement.description}")
 
 
@@ -642,7 +652,7 @@ def main() -> None:
         st.divider()
         st.caption(t("catalog_stats", **stats))
         if fx_table.stale:
-            st.warning("Sin conexión al servicio de tipo de cambio: se usan valores de respaldo.")
+            st.warning(t("fx_no_connection"))
 
     # Navegación por radio en vez de st.tabs: st.tabs no se puede cambiar por
     # código, y el botón "Usar en la calculadora" del recomendador necesita
