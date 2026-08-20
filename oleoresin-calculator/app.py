@@ -45,7 +45,7 @@ from matching.scorer import (
 from pricing import fx as fx_module
 from pricing import market
 from ui import charts, theme
-from ui.i18n import LANGUAGES, Translator
+from ui.i18n import LANGUAGES, ONE_PAGER_LANGUAGES, Translator
 
 APP_ROOT = Path(__file__).parent
 LOGO_PATH = APP_ROOT / "assets" / "robertet_logo_white.png"
@@ -396,7 +396,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
         c_left, c_right = st.columns([1, 1.5], gap="large")
         with c_left:
             st.markdown(f"**{t('chart_comparison')}**")
-            st.plotly_chart(charts.cost_comparison(calc, symbol), use_container_width=True,
+            st.plotly_chart(charts.cost_comparison(calc, symbol, t), use_container_width=True,
                             config={"displayModeBar": False})
         with c_right:
             st.markdown(f"**{t('chart_waterfall')}**")
@@ -406,7 +406,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
         st.markdown(f"**{t('chart_sensitivity')}**")
         st.caption(t("chart_sensitivity_sub"))
         curve = rep.sensitivity_curve(calc)
-        figure = charts.price_sensitivity(curve, calc, symbol)
+        figure = charts.price_sensitivity(curve, calc, symbol, t)
         if figure is not None:
             st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
 
@@ -418,8 +418,12 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
                     st.markdown(f'<div class="rb-note">{note}</div>', unsafe_allow_html=True)
 
             st.divider()
-            exp_left, exp_right = st.columns([2, 1])
-            customer = exp_left.text_input("Cliente (para el one-pager)", key="calc_customer")
+            exp_left, exp_mid, exp_right = st.columns([1.6, 1, 1])
+            customer = exp_left.text_input(t("customer_name"), key="calc_customer")
+            onepager_lang = exp_mid.selectbox(
+                t("onepager_language"), list(ONE_PAGER_LANGUAGES),
+                format_func=lambda c: ONE_PAGER_LANGUAGES[c], key="onepager_lang",
+            )
             html_doc = one_pager.build_html(
                 product=product,
                 replacement=calc,
@@ -430,14 +434,15 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
                 gaps=st.session_state.get("last_gaps"),
                 customer=customer,
                 fx_note=fx_table.provenance(),
+                language=onepager_lang,
             )
             exp_right.download_button(
-                "⬇ One-pager para el cliente",
+                t("download_onepager"),
                 data=html_doc.encode("utf-8"),
                 file_name=f"value_selling_{product.code}.html",
                 mime="text/html",
                 use_container_width=True,
-                help="HTML de una página. Ábrelo e imprime a PDF desde el navegador.",
+                help=t("onepager_help"),
             )
 
 
@@ -458,7 +463,7 @@ def render_gap_report(t: Translator, candidate) -> None:
             t("col_parameter"): g.parameter,
             t("col_requested"): g.requested,
             t("col_offered"): g.offered,
-            t("col_verdict"): {"ok": "✓ Cumple", "warn": "⚠ Revisar", "fail": "✕ No cumple"}[g.verdict],
+            t("col_verdict"): {"ok": t("verdict_ok"), "warn": t("verdict_warn"), "fail": t("verdict_fail")}[g.verdict],
             t("col_comment"): g.comment,
         }
         for g in candidate.gaps
@@ -469,7 +474,7 @@ def render_gap_report(t: Translator, candidate) -> None:
     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
     tone = "fail" if candidate.blocking else ("warn" if candidate.deviations else "ok")
     st.markdown(
-        f'<div class="rb-src">{candidate.deviations} desviación(es) · '
+        f'<div class="rb-src">{candidate.deviations} {t("deviations_label")} · '
         f'{badge(candidate.suggested_action(), tone)}</div>',
         unsafe_allow_html=True,
     )
