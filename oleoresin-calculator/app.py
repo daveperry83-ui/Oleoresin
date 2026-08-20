@@ -157,7 +157,17 @@ def resolve_catalog(t: Translator) -> Optional[Catalog]:
         except Exception as exc:  # pragma: no cover
             st.error(f"{t('catalog_missing')} {exc}")
 
-    st.warning(f"**{t('catalog_missing')}** {t('catalog_build')}")
+        # En Streamlit Cloud: intenta descargar desde Google Drive
+    if "STREAMLIT" in __import__("sys").modules or True:  # Detecta si es Streamlit
+        try:
+            from tools.load_from_drive import ensure_catalog_exists
+            if ensure_catalog_exists():
+                st.success("✓ Catálogo descargado desde Drive")
+                return _load_catalog_from_disk(str(DEFAULT_INDEX))
+        except Exception as exc:
+            pass  # Cae a la opción manual si falla
+
+  
     with st.expander(t("catalog_upload"), expanded=True):
         st.caption(t("catalog_session_note"))
         col_a, col_b = st.columns(2)
