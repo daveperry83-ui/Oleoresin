@@ -14,6 +14,11 @@ from typing import Dict, List
 
 LANGUAGES = {"es": "Español", "en": "English"}
 DEFAULT_LANGUAGE = "es"
+
+#: Idiomas disponibles para exportar el one-pager al cliente. Es un menú
+#: independiente del idioma de la interfaz: el vendedor puede trabajar en
+#: español y aun así entregarle al cliente un one-pager en portugués o francés.
+ONE_PAGER_LANGUAGES = {"es": "Español", "en": "English", "pt": "Português", "fr": "Français"}
 _PATH = Path(__file__).with_name("i18n.json")
 
 
