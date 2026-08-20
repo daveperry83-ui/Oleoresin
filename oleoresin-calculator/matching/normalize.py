@@ -72,13 +72,34 @@ ABBREVIATIONS = {
     "std": "standardized",
 }
 
-_TOKEN = re.compile(r"[a-z0-9]+")
-
-
 def strip_accents(text: str) -> str:
     return "".join(
         ch for ch in unicodedata.normalize("NFD", text) if unicodedata.category(ch) != "Mn"
     )
+
+
+def _tokenize(text: str):
+    """Extrae tokens de texto en cualquier escritura (latín, CJK, devanagari, ...).
+
+    ``[a-z0-9]+`` solo reconoce ASCII: descarta chino e hindi por completo. Un
+    token aquí es cualquier corrida de caracteres que no sea espacio, control,
+    puntuación o símbolo (categorías Unicode Z*, C*, P*, S*). Esto conserva las
+    marcas combinantes espaciadas (matras devanagari, categoría Mc) como parte
+    de la palabra en vez de partirla en fragmentos.
+    """
+    tokens = []
+    current = []
+    for ch in text:
+        category = unicodedata.category(ch)
+        if category[0] in ("Z", "C", "P", "S"):
+            if current:
+                tokens.append("".join(current))
+                current = []
+        else:
+            current.append(ch)
+    if current:
+        tokens.append("".join(current))
+    return tokens
 
 
 def normalize(text: str) -> str:
@@ -87,7 +108,7 @@ def normalize(text: str) -> str:
         return ""
     lowered = strip_accents(str(text).lower())
     lowered = lowered.replace("™", " ").replace("®", " ").replace("h2oleoresin", "water dispersible oleoresin")
-    tokens = _TOKEN.findall(lowered)
+    tokens = _tokenize(lowered)
     expanded = [ABBREVIATIONS.get(token, token) for token in tokens]
     return " ".join(expanded)
 
