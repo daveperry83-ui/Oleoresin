@@ -37,7 +37,7 @@ class Quote:
             return None
         return (_dt.date.today() - self.date).days
 
-    def provenance(self) -> str:
+    def provenance(self, language: str = "es") -> str:
         bits = [self.source]
         if self.grade:
             bits.append(self.grade)
@@ -45,7 +45,7 @@ class Quote:
             bits.append(self.date.strftime("%d-%b-%Y"))
         age = self.age_days
         if age is not None and age > 1:
-            bits.append(f"hace {age} días")
+            bits.append(f"{age} days ago" if language == "en" else f"hace {age} días")
         return " · ".join(bits)
 
 

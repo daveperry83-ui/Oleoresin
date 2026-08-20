@@ -32,12 +32,14 @@ from data_layer.schema import (
     SOURCE_FIRST_CHOICE,
     SOURCE_LABELS,
     Product,
+    marker_label,
     pick_marker,
 )
 from export import one_pager
 from matching import spec_parser
 from matching.scorer import (
     CONFIDENCE_LABELS,
+    confidence_label,
     lookup_code,
     lookup_competitor,
     recommend,
@@ -120,7 +122,7 @@ def topbar(t: Translator, fx_table) -> None:
             <div class="rb-sub">{t('app_subtitle')} · v2.0</div>
           </div>
           <div class="rb-spacer"></div>
-          <span class="rb-pill">{fx_table.provenance()}</span>
+          <span class="rb-pill">{fx_table.provenance(t.language)}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -143,10 +145,10 @@ def source_badge(product: Product) -> str:
     return badge(SOURCE_LABELS.get(product.source, product.source), tone)
 
 
-def product_caption(product: Product) -> str:
+def product_caption(product: Product, language: str = "es") -> str:
     bits = [SOLUBILITY_LABELS.get(product.solubility, "—")]
     for name, rng in list(product.analytes.items())[:3]:
-        bits.append(f"{MARKER_LABELS.get(name, name)} {rng.format()}")
+        bits.append(f"{marker_label(name, language)} {rng.format()}")
     return " · ".join(bits)
 
 
@@ -241,7 +243,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
             format_func=lambda p: f"{p.code} · {p.description[:44]}",
             key="calc_product",
         )
-        st.markdown(f"{source_badge(product)} {badge(product_caption(product), 'info')}",
+        st.markdown(f"{source_badge(product)} {badge(product_caption(product, t.language), 'info')}",
                     unsafe_allow_html=True)
 
         st.markdown(f"##### 2 · {t('sec_marker')}")
@@ -249,7 +251,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
         marker = st.selectbox(
             t("marker_label"), markers,
             index=markers.index(pick_marker(product.analytes)) if markers else 0,
-            format_func=lambda m: MARKER_LABELS.get(m, m),
+            format_func=lambda m: marker_label(m, t.language),
             key="calc_marker",
         )
         offered = product.analytes[marker]
@@ -265,7 +267,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
             key="calc_cnat",
         )
         if reference:
-            st.caption(f"{t('typical_range')}: {reference.range_text()} · {reference.source}")
+            st.caption(f"{t('typical_range')}: {reference.range_text()} · {reference.source(t.language)}")
         else:
             st.caption(t("catalog_no_reference"))
 
@@ -301,7 +303,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
             converted = fx_table.convert(quote.value, currency) if currency != "USD" else quote.value
             st.markdown(
                 f'<div class="rb-note"><b>{symbol} {converted:,.2f}/kg</b><br>'
-                f'{quote.provenance()}<br><span style="font-size:11.5px">'
+                f'{quote.provenance(t.language)}<br><span style="font-size:11.5px">'
                 f'{t("warn_market_price")}</span></div>',
                 unsafe_allow_html=True,
             )
@@ -351,7 +353,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
                 <div class="rb-v">{t('hero_caption', code=product.code,
                                      ratio=calc.effective_ratio, family=family_label)}</div>
                 <div class="rb-n">{SOLUBILITY_LABELS.get(product.solubility, '—')} ·
-                    {MARKER_LABELS.get(marker, marker)} {offered.format()} ·
+                    {marker_label(marker, t.language)} {offered.format()} ·
                     {t('hero_detail', theoretical=calc.theoretical_ratio, efficiency=efficiency)}</div>
               </div>
             </div>
@@ -400,7 +402,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
                             config={"displayModeBar": False})
         with c_right:
             st.markdown(f"**{t('chart_waterfall')}**")
-            st.plotly_chart(charts.savings_waterfall(result, symbol), use_container_width=True,
+            st.plotly_chart(charts.savings_waterfall(result, symbol, t), use_container_width=True,
                             config={"displayModeBar": False})
 
         st.markdown(f"**{t('chart_sensitivity')}**")
@@ -411,7 +413,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
             st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
 
         if not presentation:
-            notes = commercial_advice(calc)
+            notes = commercial_advice(calc, t.language)
             if notes:
                 st.markdown(f"**{t('advice_title')}**")
                 for note in notes:
@@ -433,7 +435,7 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
                 marker=marker,
                 gaps=st.session_state.get("last_gaps"),
                 customer=customer,
-                fx_note=fx_table.provenance(),
+                fx_note=fx_table.provenance(onepager_lang),
                 language=onepager_lang,
             )
             exp_right.download_button(
@@ -504,7 +506,7 @@ def tab_recommender(t: Translator, catalog: Catalog):
 
     spec = spec_parser.parse(text)
     st.markdown(f"**{t('rec_parsed')}**")
-    st.markdown(f'<div class="rb-note">{spec.summary()}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="rb-note">{spec.summary(t.language)}</div>', unsafe_allow_html=True)
 
     if spec.competitor_code:
         st.caption(f"{t('competitor_detected')}: {spec.competitor_code}")
@@ -514,7 +516,7 @@ def tab_recommender(t: Translator, catalog: Catalog):
         _competitor_panel(t, catalog)
         return
 
-    candidates = recommend(spec, catalog, limit=5)
+    candidates = recommend(spec, catalog, limit=5, language=t.language)
     if not candidates:
         st.warning(t("rec_no_match"))
         _competitor_panel(t, catalog)
@@ -540,8 +542,8 @@ def tab_recommender(t: Translator, catalog: Catalog):
                     t("col_source"): SOURCE_LABELS.get(p.source, p.source),
                     t("col_solubility"): SOLUBILITY_LABELS.get(p.solubility, "—"),
                     t("col_score"): round(c.score, 2),
-                    t("col_confidence"): CONFIDENCE_LABELS[c.confidence],
-                    t("col_action"): c.suggested_action(),
+                    t("col_confidence"): confidence_label(c.confidence, t.language),
+                    t("col_action"): c.suggested_action(t.language),
                 }
             )
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
@@ -563,9 +565,9 @@ def tab_recommender(t: Translator, catalog: Catalog):
         st.markdown(
             f'<span class="rb-code">{candidate.product.code}</span> '
             f'{source_badge(candidate.product)} '
-            f'{badge(CONFIDENCE_LABELS[candidate.confidence], "ok" if candidate.confidence == "high" else "warn")}'
+            f'{badge(confidence_label(candidate.confidence, t.language), "ok" if candidate.confidence == "high" else "warn")}'
             f'<div class="rb-src">{candidate.product.description} · '
-            f'{product_caption(candidate.product)}</div>',
+            f'{product_caption(candidate.product, t.language)}</div>',
             unsafe_allow_html=True,
         )
     with head_right:
@@ -610,16 +612,16 @@ def _competitor_panel(t: Translator, catalog: Catalog):
 
     with right:
         st.markdown(f"##### {t('code_search')}")
-        code = st.text_input("Código", placeholder="NR3101", label_visibility="collapsed")
+        code = st.text_input(t("col_code"), placeholder="NR3101", label_visibility="collapsed")
         if code:
-            result = lookup_code(code, catalog)
+            result = lookup_code(code, catalog, t.language)
             if not result.found:
                 st.caption(result.message)
             else:
                 product = result.product
                 st.markdown(
                     f'<span class="rb-code">{product.code}</span> {source_badge(product)}<br>'
-                    f'<div class="rb-src">{product.description} · {product_caption(product)}</div>',
+                    f'<div class="rb-src">{product.description} · {product_caption(product, t.language)}</div>',
                     unsafe_allow_html=True,
                 )
                 if result.message:
@@ -639,12 +641,12 @@ def main() -> None:
                             format_func=lambda c: LANGUAGES[c], horizontal=True)
         t = Translator(language)
         currency = st.selectbox(t("currency"), list(fx_module.CURRENCIES),
-                                format_func=lambda c: f"{c} · {fx_module.CURRENCIES[c][1]}")
+                                format_func=lambda c: f"{c} · {fx_module.currency_name(c, t.language)}")
         presentation = st.toggle(t("presentation_mode"), value=False)
 
     fx_table = _fx_table("USD")
     if currency != "USD":
-        st.session_state["fx_note"] = fx_table.provenance()
+        st.session_state["fx_note"] = fx_table.provenance(t.language)
 
     topbar(t, fx_table)
 

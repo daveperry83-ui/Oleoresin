@@ -78,21 +78,37 @@ class BatchResult:
             return None
         return (1 - self.oleoresin_kg / self.natural_kg) * 100.0
 
-    def waterfall(self) -> List[Tuple[str, float, str]]:
-        """Pasos del gráfico de cascada: (etiqueta, valor, tipo)."""
+    #: Etiquetas por defecto (español), usadas si no se pasa `labels`.
+    _DEFAULT_LABELS = {
+        "natural_cost": "Costo especia natural",
+        "oleoresin_cost": "Costo oleorresina",
+        "logistics": "Flete y almacenaje",
+        "waste": "Merma evitada",
+        "sterilization": "Tratamiento microbiológico",
+        "changeover": "Equipo y dispersión",
+        "net_saving": "Ahorro neto anual",
+    }
+
+    def waterfall(self, labels: Optional[dict] = None) -> List[Tuple[str, float, str]]:
+        """Pasos del gráfico de cascada: (etiqueta, valor, tipo).
+
+        `labels` permite sobrescribir las etiquetas (p. ej. para traducirlas vía
+        i18n); las claves esperadas son las de `_DEFAULT_LABELS`.
+        """
+        L = {**self._DEFAULT_LABELS, **(labels or {})}
         steps: List[Tuple[str, float, str]] = [
-            ("Costo especia natural", self.natural_cost, "base"),
-            ("Costo oleorresina", -self.oleoresin_cost, "negative"),
+            (L["natural_cost"], self.natural_cost, "base"),
+            (L["oleoresin_cost"], -self.oleoresin_cost, "negative"),
         ]
         if self.logistics_saving:
-            steps.append(("Flete y almacenaje", self.logistics_saving, "positive"))
+            steps.append((L["logistics"], self.logistics_saving, "positive"))
         if self.waste_saving:
-            steps.append(("Merma evitada", self.waste_saving, "positive"))
+            steps.append((L["waste"], self.waste_saving, "positive"))
         if self.sterilization_saving:
-            steps.append(("Tratamiento microbiológico", self.sterilization_saving, "positive"))
+            steps.append((L["sterilization"], self.sterilization_saving, "positive"))
         if self.changeover_cost:
-            steps.append(("Equipo y dispersión", -self.changeover_cost, "negative"))
-        steps.append(("Ahorro neto anual", self.net_saving, "total"))
+            steps.append((L["changeover"], -self.changeover_cost, "negative"))
+        steps.append((L["net_saving"], self.net_saving, "total"))
         return steps
 
 
@@ -131,7 +147,7 @@ def batch(
 LOW_RATIO_THRESHOLD = 4.0
 
 
-def commercial_advice(replacement: Replacement) -> List[str]:
+def commercial_advice(replacement: Replacement, language: str = "es") -> List[str]:
     """Notas honestas sobre cuándo el argumento NO es el costo.
 
     Una herramienta que solo dice "sí, ahorras" no es creíble. Para especias de
@@ -139,33 +155,58 @@ def commercial_advice(replacement: Replacement) -> List[str]:
     reemplazo es bajo y el arbitraje rara vez favorece a la oleorresina por
     precio puro — pero sí por estandarización y microbiología.
     """
+    en = language == "en"
     notes: List[str] = []
 
     if replacement.effective_ratio < LOW_RATIO_THRESHOLD:
         notes.append(
-            f"El factor de reemplazo es bajo ({replacement.effective_ratio:.1f}). "
-            "En especias de alto contenido de volátiles el argumento rara vez es el "
-            "precio: apóyate en estandarización lote a lote, ausencia de carga "
-            "microbiana y vida útil."
+            (
+                f"The replacement factor is low ({replacement.effective_ratio:.1f}). "
+                "For high-volatile spices the argument is rarely price: lean on "
+                "batch-to-batch standardisation, absence of microbial load and "
+                "shelf life."
+            ) if en else (
+                f"El factor de reemplazo es bajo ({replacement.effective_ratio:.1f}). "
+                "En especias de alto contenido de volátiles el argumento rara vez es el "
+                "precio: apóyate en estandarización lote a lote, ausencia de carga "
+                "microbiana y vida útil."
+            )
         )
 
     if not replacement.is_favourable:
         notes.append(
-            "A estos precios la oleorresina sale más cara por kg equivalente. "
-            "Revisa si el cliente está comparando contra una especia de grado inferior, "
-            "o cambia el eje de la conversación a costo total y consistencia."
+            (
+                "At these prices the oleoresin comes out more expensive per equivalent "
+                "kg. Check whether the customer is comparing against a lower-grade "
+                "spice, or shift the conversation to total cost and consistency."
+            ) if en else (
+                "A estos precios la oleorresina sale más cara por kg equivalente. "
+                "Revisa si el cliente está comparando contra una especia de grado inferior, "
+                "o cambia el eje de la conversación a costo total y consistencia."
+            )
         )
     elif replacement.price_headroom > 0:
         notes.append(
-            f"Tienes {replacement.price_headroom:,.2f} {replacement.currency}/kg de espacio "
-            f"antes del precio de indiferencia ({replacement.indifference_price:,.2f})."
+            (
+                f"You have {replacement.price_headroom:,.2f} {replacement.currency}/kg of "
+                f"headroom before the indifference price ({replacement.indifference_price:,.2f})."
+            ) if en else (
+                f"Tienes {replacement.price_headroom:,.2f} {replacement.currency}/kg de espacio "
+                f"antes del precio de indiferencia ({replacement.indifference_price:,.2f})."
+            )
         )
 
     if replacement.efficiency >= 0.99 and replacement.marker == "volatile_oil":
         notes.append(
-            "Estás calculando aceite volátil con eficiencia 1.00. El perfil sensorial "
-            "de una oleorresina no es idéntico al de la especia molida; un factor de "
-            "0.80–0.90 es lo que suele sostenerse en la prueba de planta."
+            (
+                "You're calculating volatile oil at 1.00 efficiency. An oleoresin's "
+                "sensory profile isn't identical to ground spice; a 0.80–0.90 factor is "
+                "what usually holds up in a plant trial."
+            ) if en else (
+                "Estás calculando aceite volátil con eficiencia 1.00. El perfil sensorial "
+                "de una oleorresina no es idéntico al de la especia molida; un factor de "
+                "0.80–0.90 es lo que suele sostenerse en la prueba de planta."
+            )
         )
 
     return notes

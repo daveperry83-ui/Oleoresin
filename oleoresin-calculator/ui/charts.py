@@ -72,7 +72,7 @@ def cost_comparison(replacement: Replacement, symbol: str, t: Translator) -> go.
     return fig
 
 
-def savings_waterfall(result: BatchResult, symbol: str) -> go.Figure:
+def savings_waterfall(result: BatchResult, symbol: str, t: Translator) -> go.Figure:
     """Composición del ahorro anual, paso a paso.
 
     Se construye con barras flotantes en vez de ``go.Waterfall`` porque este
@@ -82,7 +82,16 @@ def savings_waterfall(result: BatchResult, symbol: str) -> go.Figure:
     referencia neutra, incrementos en la serie primaria, decrementos en rojo y
     el total en el verde de resultado — o rojo si el resultado es negativo.
     """
-    steps = result.waterfall()
+    labels_map = {
+        "natural_cost": t("wf_natural_cost"),
+        "oleoresin_cost": t("wf_oleoresin_cost"),
+        "logistics": t("wf_logistics"),
+        "waste": t("wf_waste"),
+        "sterilization": t("wf_sterilization"),
+        "changeover": t("wf_changeover"),
+        "net_saving": t("wf_net_saving"),
+    }
+    steps = result.waterfall(labels_map)
 
     labels: List[str] = []
     bases: List[float] = []

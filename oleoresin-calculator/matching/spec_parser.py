@@ -55,26 +55,30 @@ class ClientSpec:
     def is_empty(self) -> bool:
         return not (self.family or self.analytes or self.solubility != "unknown")
 
-    def summary(self) -> str:
+    def summary(self, language: str = "es") -> str:
+        from core.units import SOLUBILITY_LABELS
+        from data_layer.schema import marker_label
+
+        en = language == "en"
         bits: List[str] = []
         if self.product_name:
             bits.append(self.product_name)
         elif self.family:
             bits.append(self.family.title())
         if self.solubility != "unknown":
-            from core.units import SOLUBILITY_LABELS
-
             bits.append(SOLUBILITY_LABELS[self.solubility])
-        from data_layer.schema import MARKER_LABELS
 
         for name, rng in self.analytes.items():
-            bits.append(f"{MARKER_LABELS.get(name, name)} {rng.format()}")
+            bits.append(f"{marker_label(name, language)} {rng.format()}")
+        labels = _REQUIREMENT_LABELS_EN if en else _REQUIREMENT_LABELS
         for key, wanted in self.requirements.items():
             if wanted:
-                bits.append(_REQUIREMENT_LABELS.get(key, key))
+                bits.append(labels.get(key, key))
         if self.shelf_life_min:
-            bits.append(f"vida útil ≥ {self.shelf_life_min:g} meses")
-        return " · ".join(bits) if bits else "sin requisitos reconocidos"
+            bits.append(f"{'shelf life' if en else 'vida útil'} ≥ {self.shelf_life_min:g} {'months' if en else 'meses'}")
+        if bits:
+            return " · ".join(bits)
+        return "no recognised requirements" if en else "sin requisitos reconocidos"
 
 
 _REQUIREMENT_LABELS = {
@@ -85,6 +89,16 @@ _REQUIREMENT_LABELS = {
     "organic": "Orgánico",
     "no_soy": "Sin soya",
     "allergen_free": "Libre de alérgenos",
+}
+
+_REQUIREMENT_LABELS_EN = {
+    "kosher": "Kosher",
+    "halal": "Halal",
+    "vegan": "Vegan",
+    "gmo_free": "Non GMO",
+    "organic": "Organic",
+    "no_soy": "Soy-free",
+    "allergen_free": "Allergen-free",
 }
 
 

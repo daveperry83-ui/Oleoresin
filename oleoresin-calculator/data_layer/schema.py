@@ -127,6 +127,22 @@ MARKER_LABELS = {
     "vanillin": "Vainillina",
 }
 
+MARKER_LABELS_EN = {
+    "volatile_oil": "Volatile oil",
+    "piperine": "Piperine",
+    "curcumin": "Curcumin",
+    "capsaicin": "Capsaicin",
+    "colour": "Colour",
+    "scoville": "Scoville",
+    "carnosic_acid": "Carnosic acid",
+    "vanillin": "Vanillin",
+}
+
+
+def marker_label(key: str, language: str = "es") -> str:
+    table = MARKER_LABELS_EN if language == "en" else MARKER_LABELS
+    return table.get(key, key)
+
 #: El factor de reemplazo teórico solo es válido 1:1 cuando el atributo que el
 #: cliente compra ES el marcador. Para aceite volátil el perfil sensorial de la
 #: oleorresina no es idéntico al de la especia molida.
