@@ -1,0 +1,97 @@
+{
+  "app_title":            {"es": "Value Selling Calculator", "en": "Value Selling Calculator"},
+  "app_subtitle":         {"es": "Oleorresinas vs. especia natural", "en": "Oleoresins vs. natural spice"},
+  "tab_calculator":       {"es": "Calculadora de ahorro", "en": "Savings calculator"},
+  "tab_recommender":      {"es": "Recomendador de producto", "en": "Product recommender"},
+
+  "sec_product":          {"es": "Producto", "en": "Product"},
+  "sec_marker":           {"es": "Concentración del marcador", "en": "Marker concentration"},
+  "sec_prices":           {"es": "Precios y moneda", "en": "Prices and currency"},
+  "sec_volume":           {"es": "Volumen", "en": "Volume"},
+  "sec_hidden":           {"es": "Costos ocultos (opcional)", "en": "Hidden costs (optional)"},
+
+  "pick_family":          {"es": "Familia botánica", "en": "Botanical family"},
+  "pick_product":         {"es": "Producto Robertet", "en": "Robertet product"},
+  "marker_label":         {"es": "Marcador", "en": "Marker"},
+  "conc_natural":         {"es": "En especia natural", "en": "In natural spice"},
+  "conc_oleoresin":       {"es": "En oleorresina", "en": "In oleoresin"},
+  "efficiency":           {"es": "Eficiencia de reemplazo", "en": "Replacement efficiency"},
+  "efficiency_help":      {"es": "Ajusta el factor teórico por la pérdida de top notes en la extracción. Usa 1.00 para color y pungencia, donde el atributo que compra el cliente ES el marcador.", "en": "Adjusts the theoretical factor for top-note loss during extraction. Use 1.00 for colour and pungency, where the attribute the customer buys IS the marker."},
+
+  "currency":             {"es": "Moneda", "en": "Currency"},
+  "price_oleoresin":      {"es": "Precio oleorresina", "en": "Oleoresin price"},
+  "price_natural":        {"es": "Precio especia natural", "en": "Natural spice price"},
+  "fetch_reference":      {"es": "Buscar referencia de mercado", "en": "Fetch market reference"},
+  "volume_natural":       {"es": "Especia natural a reemplazar (kg/año)", "en": "Natural spice to replace (kg/year)"},
+
+  "hidden_logistics":     {"es": "Flete y almacenaje por kg movido", "en": "Freight and storage per kg handled"},
+  "hidden_waste":         {"es": "Merma de especia natural (%)", "en": "Natural spice waste (%)"},
+  "hidden_sterilization": {"es": "Tratamiento microbiológico por kg", "en": "Microbial treatment per kg"},
+  "hidden_changeover":    {"es": "Costo anual de equipo y dispersión", "en": "Annual equipment and dispersion cost"},
+
+  "hero_ratio":           {"es": "Factor de reemplazo efectivo", "en": "Effective replacement factor"},
+  "hero_caption":         {"es": "1 kg de {code} reemplaza {ratio:.2f} kg de {family}", "en": "1 kg of {code} replaces {ratio:.2f} kg of {family}"},
+  "hero_detail":          {"es": "Factor teórico {theoretical:.2f} × eficiencia {efficiency:.2f}", "en": "Theoretical factor {theoretical:.2f} × efficiency {efficiency:.2f}"},
+
+  "kpi_ciu":              {"es": "Costo en uso equivalente", "en": "Equivalent cost in use"},
+  "kpi_ciu_sub":          {"es": "por kg de especia equivalente", "en": "per kg of equivalent spice"},
+  "kpi_saving":           {"es": "Ahorro por kg", "en": "Saving per kg"},
+  "kpi_extra":            {"es": "Costo extra por kg", "en": "Extra cost per kg"},
+  "kpi_indifference":     {"es": "Precio de indiferencia", "en": "Indifference price"},
+  "kpi_indifference_sub": {"es": "techo de precio antes de perder la ventaja", "en": "price ceiling before losing the advantage"},
+  "kpi_annual":           {"es": "Ahorro neto anual", "en": "Net annual saving"},
+  "kpi_annual_cost":      {"es": "Costo neto anual", "en": "Net annual cost"},
+
+  "chart_comparison":     {"es": "Costo por kg de especia equivalente", "en": "Cost per kg of equivalent spice"},
+  "chart_waterfall":      {"es": "Composición del ahorro anual", "en": "Annual saving breakdown"},
+  "chart_sensitivity":    {"es": "Sensibilidad del ahorro al precio", "en": "Saving sensitivity to price"},
+  "chart_sensitivity_sub":{"es": "Hasta dónde puedes mover el precio antes de perder el argumento", "en": "How far you can move price before losing the argument"},
+
+  "batch_needed":         {"es": "Oleorresina necesaria", "en": "Oleoresin needed"},
+  "batch_volume_cut":     {"es": "menos volumen a mover", "en": "less volume to handle"},
+
+  "rec_upload":           {"es": "Sube la especificación del cliente", "en": "Upload the customer specification"},
+  "rec_upload_help":      {"es": "PDF, Excel, CSV o texto. También puedes pegarla abajo.", "en": "PDF, Excel, CSV or text. You can also paste it below."},
+  "rec_paste":            {"es": "…o pega aquí la especificación", "en": "…or paste the specification here"},
+  "rec_analyze":          {"es": "Analizar especificación", "en": "Analyse specification"},
+  "rec_parsed":           {"es": "Requisitos detectados", "en": "Detected requirements"},
+  "rec_results":          {"es": "Candidatos recomendados", "en": "Recommended candidates"},
+  "rec_gap":              {"es": "Reporte de brecha", "en": "Gap report"},
+  "rec_none":             {"es": "No se reconocieron requisitos suficientes. Incluye al menos el nombre del producto o un parámetro numérico.", "en": "Not enough requirements recognised. Include at least the product name or one numeric parameter."},
+  "rec_no_match":         {"es": "Ningún producto vigente del catálogo cubre esta especificación.", "en": "No active catalogue product covers this specification."},
+  "rec_use":              {"es": "Usar en la calculadora", "en": "Use in the calculator"},
+
+  "comp_title":           {"es": "Reemplazo de competidor", "en": "Competitor replacement"},
+  "comp_search":          {"es": "Código o descripción de Kalsec / Mane", "en": "Kalsec / Mane code or description"},
+  "comp_none":            {"es": "Sin coincidencias en la tabla de equivalencias.", "en": "No matches in the equivalence table."},
+  "comp_no_offer":        {"es": "Sin oferta equivalente", "en": "Nothing to offer"},
+
+  "code_search":          {"es": "Buscar por código Robertet", "en": "Search by Robertet code"},
+
+  "col_code":             {"es": "Código", "en": "Code"},
+  "col_description":      {"es": "Descripción", "en": "Description"},
+  "col_source":           {"es": "Origen", "en": "Source"},
+  "col_solubility":       {"es": "Solubilidad", "en": "Solubility"},
+  "col_score":            {"es": "Score", "en": "Score"},
+  "col_confidence":       {"es": "Confianza", "en": "Confidence"},
+  "col_action":           {"es": "Acción sugerida", "en": "Suggested action"},
+  "col_parameter":        {"es": "Parámetro", "en": "Parameter"},
+  "col_requested":        {"es": "Pide el cliente", "en": "Customer requires"},
+  "col_offered":          {"es": "Ofrece Robertet", "en": "Robertet offers"},
+  "col_verdict":          {"es": "Veredicto", "en": "Verdict"},
+  "col_comment":          {"es": "Comentario", "en": "Comment"},
+
+  "warn_no_marker":       {"es": "Este producto no declara ningún marcador numérico en el catálogo. Captura los valores a mano o elige otro producto.", "en": "This product declares no numeric marker in the catalogue. Enter the values manually or pick another product."},
+  "warn_market_price":    {"es": "Referencia de mercado mayorista de India. No es tu costo de compra en LATAM: le falta grado de exportación, flete, arancel y margen de trader. Úsalo como señal de tendencia.", "en": "Indian wholesale market reference. This is not your LATAM purchase cost: it excludes export grade, freight, duty and trader margin. Use it as a trend signal."},
+  "warn_confidence":      {"es": "Los candidatos de confianza media o baja no son un match confirmado. La especificación manda sobre el nombre.", "en": "Medium and low confidence candidates are not a confirmed match. The specification prevails over the name."},
+
+  "catalog_missing":      {"es": "No encuentro el índice del catálogo.", "en": "Catalogue index not found."},
+  "catalog_build":        {"es": "Genéralo con `python tools/build_index.py` apuntando a los dos Excel, o súbelos aquí para esta sesión.", "en": "Build it with `python tools/build_index.py` pointing at both Excel files, or upload them here for this session."},
+  "catalog_upload":       {"es": "Cargar catálogo solo para esta sesión", "en": "Load catalogue for this session only"},
+  "catalog_session_note": {"es": "Modo portátil: el catálogo vive únicamente en memoria y se borra al cerrar la sesión. No se escribe a disco.", "en": "Portable mode: the catalogue lives in memory only and is discarded when the session ends. Nothing is written to disk."},
+  "catalog_stats":        {"es": "{offerable:,} productos ofertables de {total:,} · {void:,} anulados y {converted:,} reemplazados excluidos", "en": "{offerable:,} offerable products out of {total:,} · {void:,} void and {converted:,} superseded excluded"},
+
+  "presentation_mode":    {"es": "Modo presentación", "en": "Presentation mode"},
+  "advice_title":         {"es": "Notas comerciales", "en": "Commercial notes"},
+  "footer":               {"es": "Documento interno Robertet · las referencias de mercado son indicativas y no constituyen costo de compra", "en": "Robertet internal · market references are indicative and do not constitute purchase cost"}
+}
