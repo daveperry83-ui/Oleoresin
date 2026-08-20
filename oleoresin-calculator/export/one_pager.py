@@ -37,16 +37,64 @@ def _esc(value) -> str:
     return html.escape(str(value))
 
 
-#: ``strftime("%B")`` depende del locale del sistema, que en un servidor suele
-#: ser inglés. El one-pager sale del edificio: la fecha va en español siempre.
-_MONTHS_ES = (
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-)
+#: Traducciones de meses y textos para el one-pager
+_TRANSLATIONS = {
+    "es": {
+        "months": ("enero", "febrero", "marzo", "abril", "mayo", "junio",
+                   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"),
+        "title": "Value Selling · Análisis de reemplazo",
+        "subtitle": "Oleorresina vs. especia natural",
+        "client": "Cliente",
+        "spec_compliance": "Cumplimiento de especificación",
+        "parameter": "Parámetro",
+        "customer_requires": "Pide el cliente",
+        "robertet_offers": "Ofrece Robertet",
+    },
+    "en": {
+        "months": ("January", "February", "March", "April", "May", "June",
+                   "July", "August", "September", "October", "November", "December"),
+        "title": "Value Selling · Replacement Analysis",
+        "subtitle": "Oleoresin vs. natural spice",
+        "client": "Customer",
+        "spec_compliance": "Specification Compliance",
+        "parameter": "Parameter",
+        "customer_requires": "Customer Requires",
+        "robertet_offers": "Robertet Offers",
+    },
+    "pt": {
+        "months": ("janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"),
+        "title": "Value Selling · Análise de Substituição",
+        "subtitle": "Oleoresina vs. especiaria natural",
+        "client": "Cliente",
+        "spec_compliance": "Conformidade de Especificação",
+        "parameter": "Parâmetro",
+        "customer_requires": "Cliente Requer",
+        "robertet_offers": "Robertet Oferece",
+    },
+    "fr": {
+        "months": ("janvier", "février", "mars", "avril", "mai", "juin",
+                   "juillet", "août", "septembre", "octobre", "novembre", "décembre"),
+        "title": "Value Selling · Analyse de Remplacement",
+        "subtitle": "Oléorésine vs. épice naturelle",
+        "client": "Client",
+        "spec_compliance": "Conformité aux Spécifications",
+        "parameter": "Paramètre",
+        "customer_requires": "Le Client Exige",
+        "robertet_offers": "Robertet Propose",
+    },
+}
 
+def _get_text(language: str, key: str) -> str:
+    """Obtiene el texto traducido o fallback al español."""
+    if language not in _TRANSLATIONS:
+        language = "es"
+    return _TRANSLATIONS[language].get(key, _TRANSLATIONS["es"].get(key, key))
 
-def _format_date(date: _dt.date) -> str:
-    return f"{date.day} de {_MONTHS_ES[date.month - 1]} de {date.year}"
+def _format_date(date: _dt.date, language: str = "es") -> str:
+    months = _TRANSLATIONS.get(language, _TRANSLATIONS["es"])["months"]
+    month_name = months[date.month - 1]
+    return f"{date.day} de {month_name} de {date.year}" if language == "es" else f"{month_name} {date.day}, {date.year}"
 
 
 def build_html(
@@ -61,9 +109,10 @@ def build_html(
     customer: str = "",
     author: str = "",
     fx_note: str = "",
+    language: str = "es",
 ) -> str:
     """Devuelve el HTML completo del one-pager."""
-    today = _format_date(_dt.date.today())
+    today = _format_date(_dt.date.today(), language)
     favourable = replacement.is_favourable
     saving_pct = replacement.saving_pct or 0.0
     logo = _logo_uri()
@@ -78,15 +127,15 @@ def build_html(
             for g in gaps
         )
         gap_rows = f"""
-        <h2>Cumplimiento de especificación</h2>
+        <h2>{_get_text(language, 'spec_compliance')}</h2>
         <table class="grid">
-          <thead><tr><th>Parámetro</th><th>Pide el cliente</th>
-                     <th>Ofrece Robertet</th><th></th></tr></thead>
+          <thead><tr><th>{_get_text(language, 'parameter')}</th><th>{_get_text(language, 'customer_requires')}</th>
+                     <th>{_get_text(language, 'robertet_offers')}</th><th></th></tr></thead>
           <tbody>{gap_rows}</tbody>
         </table>"""
 
     return f"""<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"/>
+<html lang="{language}"><head><meta charset="utf-8"/>
 <title>Value Selling · {_esc(product.code)}</title>
 <style>
   @page {{ size: A4; margin: 14mm; }}
@@ -137,12 +186,12 @@ def build_html(
   <header>
     {'<img src="' + logo + '" alt="Robertet"/>' if logo else ''}
     <div>
-      <div class="t">Value Selling · Análisis de reemplazo</div>
-      <div class="s">Oleorresina vs. especia natural</div>
+      <div class="t">{_get_text(language, 'title')}</div>
+      <div class="s">{_get_text(language, 'subtitle')}</div>
     </div>
     <div class="spacer"></div>
     <div class="meta">
-      {('Cliente: ' + _esc(customer) + '<br>') if customer else ''}
+      {(_get_text(language, 'client') + ': ' + _esc(customer) + '<br>') if customer else ''}
       {today}{('<br>' + _esc(author)) if author else ''}
     </div>
   </header>
