@@ -20,15 +20,16 @@ import plotly.graph_objects as go
 from core.replacement import Replacement
 from core.savings import BatchResult
 from ui import theme
+from ui.i18n import Translator
 
 
 def _money(value: float, symbol: str) -> str:
     return f"{symbol} {value:,.2f}"
 
 
-def cost_comparison(replacement: Replacement, symbol: str) -> go.Figure:
+def cost_comparison(replacement: Replacement, symbol: str, t: Translator) -> go.Figure:
     """Costo por kg de especia equivalente: natural vs. oleorresina."""
-    labels = ["Especia natural", "Oleorresina<br><span style='font-size:11px'>(costo en uso)</span>"]
+    labels = [t("chart_natural_spice"), t("chart_oleoresin_label")]
     values = [replacement.natural_price, replacement.cost_in_use]
     colors = [theme.INK_NEUTRAL, theme.SERIES[1] if replacement.is_favourable else theme.BAD]
 
@@ -50,7 +51,7 @@ def cost_comparison(replacement: Replacement, symbol: str) -> go.Figure:
             height=300,
             yaxis=dict(
                 gridcolor=theme.GRID, zeroline=False, linecolor="rgba(0,0,0,0)",
-                title=dict(text=f"{symbol}/kg equivalente", font=dict(size=11)),
+                title=dict(text=f"{symbol}{t('chart_per_kg')}", font=dict(size=11)),
                 range=[0, max(values) * 1.22 or 1],
             ),
             margin=dict(l=8, r=8, t=34, b=8),
@@ -168,6 +169,7 @@ def price_sensitivity(
     curve: Sequence[Tuple[float, float]],
     replacement: Replacement,
     symbol: str,
+    t: Translator,
 ) -> Optional[go.Figure]:
     """Ahorro % en función del precio de la oleorresina."""
     if not curve:
@@ -191,8 +193,8 @@ def price_sensitivity(
         go.Scatter(
             x=xs, y=ys, mode="lines",
             line=dict(color=theme.SERIES[0], width=2.5, shape="spline"),
-            hovertemplate="Precio %{x:,.2f} " + symbol + "/kg<br>Ahorro %{y:.1f} %<extra></extra>",
-            name="Ahorro",
+            hovertemplate="Precio %{x:,.2f} " + symbol + "/kg<br>" + t("chart_saving") + " %{y:.1f} %<extra></extra>",
+            name=t("chart_saving"),
         )
     )
 
@@ -203,7 +205,7 @@ def price_sensitivity(
                 x=[replacement.oleoresin_price], y=[saving], mode="markers+text",
                 marker=dict(size=11, color=theme.SERIES[0],
                             line=dict(color=theme.SURFACE_CARD, width=2)),
-                text=[f"  Hoy · {saving:.1f} %"], textposition="top right",
+                text=[f"  {t('chart_today')} · {saving:.1f} %"], textposition="top right",
                 textfont=dict(size=11, color=theme.TEXT_PRIMARY, family=theme.FONT),
                 hovertemplate="Precio actual<extra></extra>",
                 showlegend=False,
@@ -215,7 +217,7 @@ def price_sensitivity(
         # indiferencia muy fuera de escala; decirlo vale más que estirar el eje.
         fig.add_annotation(
             xref="paper", yref="paper", x=0.99, y=0.06, xanchor="right",
-            text=f"Precio de indiferencia {indifference:,.0f} {symbol}/kg — fuera de escala",
+            text=f"{t('kpi_indifference')} {indifference:,.0f} {symbol}/kg — fuera de escala",
             showarrow=False,
             font=dict(size=11, color=theme.TEXT_MUTED, family=theme.FONT),
         )
@@ -225,9 +227,9 @@ def price_sensitivity(
                 x=[indifference], y=[0], mode="markers+text",
                 marker=dict(size=11, color=theme.BAD,
                             line=dict(color=theme.SURFACE_CARD, width=2)),
-                text=[f"Indiferencia · {indifference:,.0f}  "], textposition="top left",
+                text=[f"{t('chart_indifference')} · {indifference:,.0f}  "], textposition="top left",
                 textfont=dict(size=11, color=theme.TEXT_PRIMARY, family=theme.FONT),
-                hovertemplate="Precio de indiferencia<extra></extra>",
+                hovertemplate=t("kpi_indifference") + "<extra></extra>",
                 showlegend=False,
             )
         )
@@ -237,11 +239,11 @@ def price_sensitivity(
             height=330,
             hovermode="x unified",
             xaxis=dict(showgrid=False, zeroline=False, linecolor=theme.AXIS,
-                       title=dict(text=f"Precio de la oleorresina ({symbol}/kg)",
+                       title=dict(text=f"{t('chart_oleoresin_price')} ({symbol}/kg)",
                                   font=dict(size=11))),
             yaxis=dict(gridcolor=theme.GRID, zeroline=False, linecolor="rgba(0,0,0,0)",
                        ticksuffix=" %",
-                       title=dict(text="Ahorro", font=dict(size=11))),
+                       title=dict(text=t("chart_saving"), font=dict(size=11))),
             margin=dict(l=8, r=8, t=34, b=8),
         )
     )
