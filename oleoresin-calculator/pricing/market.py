@@ -65,6 +65,88 @@ def _usd_inr(fx_table=None) -> float:
     return FALLBACK_RATES["INR"]
 
 
+class USDAQuickStatsProvider(PriceProvider):
+    """USDA QuickStats — Precios agrícolas de EEUU."""
+
+    name = "USDA QuickStats"
+
+    def __init__(self, api_key: Optional[str] = None, cache: Optional[DiskCache] = None, fx=None):
+        self.api_key = api_key
+        self.cache = cache or DiskCache()
+        self.fx = fx
+
+    def fetch(self, commodity: str) -> Optional[Quote]:
+        if not self.api_key:
+            return None
+
+        # Mapeo de familias a nombres de items en USDA
+        usda_items = {
+            "pepper, black and green": "PEPPER, BLACK - PRICE RECEIVED",
+            "turmeric": "TURMERIC - PRICE RECEIVED",
+            "ginger": "GINGER - PRICE RECEIVED",
+            "capsicum": "PEPPERS, CHILI - PRICE RECEIVED",
+            "garlic": "GARLIC - PRICE RECEIVED",
+        }
+
+        data_item = usda_items.get(commodity)
+        if not data_item:
+            return None
+
+        key = f"usda:{data_item}"
+        payload = self.cache.get(key, ttl_hours=168)  # Una semana
+        if payload is None:
+            try:
+                params = {
+                    "key": self.api_key,
+                    "format": "JSON",
+                    "data_item": data_item,
+                    "geographic_level_desc": "NATIONAL",
+                    "year__GE": "2024",
+                }
+                url = f"https://quickstats.nass.usda.gov/api/api_GET/?{urllib.parse.urlencode(params)}"
+                with urllib.request.urlopen(url, timeout=TIMEOUT) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                self.cache.set(key, payload)
+            except Exception:
+                return None
+
+        records = payload.get("data") or []
+        if not records:
+            return None
+
+        # Tomar el precio más reciente
+        prices: List[float] = []
+        date: Optional[_dt.date] = None
+        for record in records:
+            try:
+                price = float(record.get("Value", 0))
+                if price > 0:
+                    prices.append(price)
+                    if date is None and record.get("Year"):
+                        date = _dt.date(int(record.get("Year", 2024)), 1, 1)
+            except (TypeError, ValueError):
+                continue
+
+        if not prices:
+            return None
+
+        # Precio medio en $/cwt (hundredweight) convertir a $/kg
+        # 1 cwt = 45.36 kg
+        median_cwt = sorted(prices)[len(prices) // 2]
+        usd_kg = median_cwt / 45.36
+
+        return Quote(
+            value=usd_kg,
+            currency="USD",
+            unit="kg",
+            source=self.name,
+            date=date,
+            url="https://quickstats.nass.usda.gov/",
+            grade=f"mediana de {len(prices)} reportes",
+            note="Precio agrícola USDA. Datos de EEUU, no LATAM.",
+        )
+
+
 class MandiProvider(PriceProvider):
     """API oficial de precios mayoristas de India (data.gov.in)."""
 
@@ -236,10 +318,17 @@ def _parse_date(raw) -> Optional[_dt.date]:
     return None
 
 
-def reference_price(commodity: str, *, api_key: Optional[str] = None, fx=None) -> Optional[Quote]:
-    """Punto de entrada único. Devuelve ``None`` si ninguna fuente responde."""
+def reference_price(commodity: str, *, api_key: Optional[str] = None, usda_key: Optional[str] = None, fx=None) -> Optional[Quote]:
+    """Punto de entrada único. Devuelve ``None`` si ninguna fuente responde.
+
+    Cascada de proveedores:
+    1. USDA QuickStats (si hay clave)
+    2. data.gov.in India Mandi (si hay clave)
+    3. Spices Board India (siempre disponible)
+    """
     cache = DiskCache()
     chain = ProviderChain(
+        USDAQuickStatsProvider(api_key=usda_key, cache=cache, fx=fx),
         MandiProvider(api_key=api_key, cache=cache, fx=fx),
         SpicesBoardProvider(cache=cache, fx=fx),
     )
