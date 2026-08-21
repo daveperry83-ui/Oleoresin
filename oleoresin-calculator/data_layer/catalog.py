@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
 from data_layer.schema import (
+    NON_BOTANICAL_FAMILIES,
     SOURCE_EXTENDED,
     SOURCE_FIRST_CHOICE,
     STATUS_ACTIVE,
@@ -53,6 +54,47 @@ class Catalog:
 
     def families(self) -> List[str]:
         return sorted({p.family for p in self.offerable if p.family})
+
+    def family_counts(self, *, matchable_only: bool = True) -> List[Tuple[str, int]]:
+        """Familias ofertables con conteo de productos, de mayor a menor volumen.
+
+        `matchable_only` excluye mezclas y categorías no botánicas (ver
+        `NON_BOTANICAL_FAMILIES`) porque no tienen un equivalente de especia
+        natural único: no se pueden usar en el selector del formulario
+        estructurado ni en la calculadora de reemplazo.
+        """
+        counts: Dict[str, int] = {}
+        for p in self.offerable:
+            if not p.family or not p.has_marker:
+                continue
+            if matchable_only and p.family in NON_BOTANICAL_FAMILIES:
+                continue
+            counts[p.family] = counts.get(p.family, 0) + 1
+        return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+    def markers_for_family(self, family: str) -> List[str]:
+        """Analitos que declaran realmente los productos de esa familia.
+
+        Se calcula en vivo contra el catálogo cargado en vez de mantener un
+        mapa hardcodeado, así que si mañana aparece un producto con un
+        marcador nuevo el formulario estructurado lo detecta solo.
+        """
+        seen: Dict[str, int] = {}
+        for p in self.offerable:
+            if p.family != family:
+                continue
+            for name in p.analytes:
+                seen[name] = seen.get(name, 0) + 1
+        return [name for name, _ in sorted(seen.items(), key=lambda kv: -kv[1])]
+
+    def marker_unit(self, family: str, marker: str) -> str:
+        """Unidad más común para ese marcador dentro de la familia."""
+        for p in self.offerable:
+            if p.family == family and marker in p.analytes:
+                unit = p.analytes[marker].unit
+                if unit:
+                    return unit
+        return "%"
 
     def stats(self) -> Dict[str, int]:
         return {

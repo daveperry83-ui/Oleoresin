@@ -23,12 +23,14 @@ import streamlit as st
 from core import replacement as rep
 from core.replacement import CalculationError
 from core.savings import HiddenCosts, batch, commercial_advice
-from core.units import SOLUBILITY_LABELS
+from core.units import SOLUBILITY_LABELS, SpecRange
 from data_layer import natural_spices
+from data_layer import recommendation_log as reclog
 from data_layer.catalog import DEFAULT_INDEX, Catalog
 from data_layer.schema import (
     DEFAULT_EFFICIENCY,
     MARKER_LABELS,
+    NON_BOTANICAL_FAMILIES,
     SOURCE_FIRST_CHOICE,
     SOURCE_LABELS,
     Product,
@@ -37,6 +39,7 @@ from data_layer.schema import (
 )
 from export import one_pager
 from matching import spec_parser
+from matching.spec_parser import ClientSpec
 from matching.scorer import (
     CONFIDENCE_LABELS,
     confidence_label,
@@ -207,7 +210,10 @@ def tab_calculator(t: Translator, catalog: Catalog, currency: str, fx_table, pre
         st.error(t("catalog_no_products"))
         return
 
-    families = sorted({p.family for p in products if p.family})
+    # Se excluyen mezclas y categorías no botánicas (ver NON_BOTANICAL_FAMILIES):
+    # no tienen un equivalente de especia natural único con el que calcular
+    # un factor de reemplazo 1:1.
+    families = sorted({p.family for p in products if p.family and p.family not in NON_BOTANICAL_FAMILIES})
     symbol = fx_module.symbol(currency)
 
     left, right = st.columns([1, 2.4], gap="large")
@@ -482,31 +488,148 @@ def render_gap_report(t: Translator, candidate) -> None:
     )
 
 
+def _log_recommendation(t: Translator, spec: ClientSpec, candidate) -> None:
+    """Registra la recomendación usada: bitácora en disco + carrito de sesión.
+
+    La bitácora en disco es la base del Excel mensual (ver sidebar). El
+    carrito de sesión es solo memoria de la pestaña: los últimos productos
+    recomendados en esta sesión, para no perderlos si el vendedor va y viene
+    entre Recomendador y Calculadora varias veces en la misma llamada.
+    """
+    customer = st.session_state.get("rec_customer", "")
+    entry = {
+        "customer": customer,
+        "family": spec.family,
+        "product_code": candidate.product.code,
+        "description": candidate.product.description,
+        "confidence": candidate.confidence,
+        "score": round(candidate.score, 3),
+        "solubility_requested": spec.solubility,
+        "language": t.language,
+    }
+    try:
+        reclog.append(entry)
+    except Exception:
+        pass  # El carrito de sesión no depende del disco; si falla, no bloquea el flujo.
+
+    history = st.session_state.setdefault("session_history", [])
+    history.insert(0, entry)
+    del history[5:]
+
+
+def _structured_spec_form(t: Translator, catalog: Catalog) -> ClientSpec:
+    """Formulario guiado: familia -> campos de sus marcadores reales.
+
+    En vez de forzar al vendedor a escribir texto libre, arma el ClientSpec
+    directamente desde los controles — cero riesgo de que el parser
+    interprete mal un número. Los marcadores mostrados por familia se
+    detectan en vivo contra el catálogo cargado (Catalog.markers_for_family),
+    no están hardcodeados, así que si el catálogo cambia el formulario se
+    ajusta solo.
+    """
+    counts = catalog.family_counts()
+    if not counts:
+        st.warning(t("catalog_no_products"))
+        return ClientSpec()
+
+    options = [f for f, _ in counts]
+    family = st.selectbox(
+        t("form_family"), options,
+        format_func=lambda f: f"{f.title()} ({dict(counts)[f]:,})",
+        key="form_family_pick",
+    )
+
+    spec = ClientSpec(family=family, product_name=family.title())
+
+    markers = catalog.markers_for_family(family)
+    if markers:
+        st.caption(t("form_markers_help"))
+        cols = st.columns(min(len(markers), 3))
+        for i, marker in enumerate(markers):
+            unit = catalog.marker_unit(family, marker)
+            label = f"{marker_label(marker, t.language)} ({unit})"
+            with cols[i % len(cols)]:
+                value = st.number_input(label, min_value=0.0, value=0.0, step=0.1,
+                                        format="%.4g", key=f"form_marker_{marker}")
+            if value > 0:
+                spec.analytes[marker] = SpecRange(low=value, high=None, kind="min",
+                                                   unit=unit, raw=f"{value} min")
+    else:
+        st.caption(t("form_no_markers"))
+
+    sol_col, shelf_col = st.columns(2)
+    with sol_col:
+        sol_options = ["unknown"] + [k for k in SOLUBILITY_LABELS if k != "unknown"]
+        solubility = st.selectbox(
+            t("form_solubility"), sol_options,
+            format_func=lambda k: SOLUBILITY_LABELS.get(k, k), key="form_solubility_pick",
+        )
+        if solubility != "unknown":
+            spec.solubility = solubility
+    with shelf_col:
+        shelf = st.number_input(t("form_shelf_life"), min_value=0.0, value=0.0, step=1.0,
+                                key="form_shelf_life_pick")
+        if shelf > 0:
+            spec.shelf_life_min = shelf
+
+    req_labels = {
+        "kosher": t("req_kosher"), "halal": t("req_halal"), "vegan": t("req_vegan"),
+        "gmo_free": t("req_gmo_free"), "organic": t("req_organic"),
+        "no_soy": t("req_no_soy"), "allergen_free": t("req_allergen_free"),
+    }
+    req_cols = st.columns(len(req_labels))
+    for (key, label), col in zip(req_labels.items(), req_cols):
+        with col:
+            if st.checkbox(label, key=f"form_req_{key}"):
+                spec.requirements[key] = True
+
+    return spec
+
+
 def tab_recommender(t: Translator, catalog: Catalog):
-    st.markdown(f"##### {t('rec_upload')}")
-    upload_col, paste_col = st.columns([1, 1.4], gap="large")
+    mode_col, customer_col = st.columns([1.4, 1])
+    with mode_col:
+        mode = st.radio(
+            t("rec_mode"), ["text", "form"],
+            format_func=lambda m: t("rec_mode_text") if m == "text" else t("rec_mode_form"),
+            horizontal=True, key="rec_mode_pick",
+        )
+    with customer_col:
+        st.text_input(t("customer_name"), key="rec_customer")
 
-    with upload_col:
-        uploaded = st.file_uploader(t("rec_upload"), type=["pdf", "xlsx", "xls", "csv", "txt"],
-                                    help=t("rec_upload_help"), label_visibility="collapsed")
-    with paste_col:
-        pasted = st.text_area(t("rec_paste"), height=132, label_visibility="collapsed",
-                              placeholder=t("rec_paste"))
+    if mode == "form":
+        spec = _structured_spec_form(t, catalog)
+        st.markdown(f"**{t('rec_parsed')}**")
+        st.markdown(f'<div class="rb-note">{spec.summary(t.language)}</div>', unsafe_allow_html=True)
+        if spec.is_empty:
+            st.info(t("form_pick_values"))
+            _competitor_panel(t, catalog)
+            return
+    else:
+        st.markdown(f"##### {t('rec_upload')}")
+        upload_col, paste_col = st.columns([1, 1.4], gap="large")
 
-    text = ""
-    if uploaded is not None:
-        text = spec_parser.read_upload(uploaded.name, uploaded.getvalue())
-    if pasted.strip():
-        text = f"{text}\n{pasted}" if text else pasted
+        with upload_col:
+            uploaded = st.file_uploader(t("rec_upload"), type=["pdf", "xlsx", "xls", "csv", "txt"],
+                                        help=t("rec_upload_help"), label_visibility="collapsed")
+        with paste_col:
+            pasted = st.text_area(t("rec_paste"), height=132, label_visibility="collapsed",
+                                  placeholder=t("rec_paste"))
 
-    if not text.strip():
-        st.info(t("rec_upload_help"))
-        _competitor_panel(t, catalog)
-        return
+        text = ""
+        if uploaded is not None:
+            text = spec_parser.read_upload(uploaded.name, uploaded.getvalue())
+        if pasted.strip():
+            text = f"{text}\n{pasted}" if text else pasted
 
-    spec = spec_parser.parse(text)
-    st.markdown(f"**{t('rec_parsed')}**")
-    st.markdown(f'<div class="rb-note">{spec.summary(t.language)}</div>', unsafe_allow_html=True)
+        if not text.strip():
+            st.info(t("rec_upload_help"))
+            _competitor_panel(t, catalog)
+            return
+
+        spec = spec_parser.parse(text)
+        st.markdown(f"**{t('rec_parsed')}**")
+        st.markdown(f'<div class="rb-note">{spec.summary(t.language)}</div>', unsafe_allow_html=True)
 
     if spec.competitor_code:
         st.caption(f"{t('competitor_detected')}: {spec.competitor_code}")
@@ -571,10 +694,14 @@ def tab_recommender(t: Translator, catalog: Catalog):
             unsafe_allow_html=True,
         )
     with head_right:
-        if candidate.product.has_marker and st.button(t("rec_use"), use_container_width=True,
-                                                      type="primary"):
+        is_blend = candidate.product.family in NON_BOTANICAL_FAMILIES
+        if is_blend:
+            st.caption(t("blend_no_calculator"))
+        elif candidate.product.has_marker and st.button(t("rec_use"), use_container_width=True,
+                                                        type="primary"):
             st.session_state["preselect_code"] = candidate.product.code
             st.session_state["goto_calculator"] = True
+            _log_recommendation(t, spec, candidate)
             st.rerun()
 
     st.session_state["last_gaps"] = candidate.gaps
@@ -635,6 +762,42 @@ def _competitor_panel(t: Translator, catalog: Catalog):
 # Main
 # ---------------------------------------------------------------------------
 
+def _history_panel(t: Translator) -> None:
+    """Sidebar: últimas recomendaciones de la sesión + export mensual a Excel."""
+    with st.expander(t("history_title")):
+        history = st.session_state.get("session_history", [])
+        if history:
+            for h in history:
+                st.markdown(
+                    f'<div class="rb-src"><span class="rb-code">{h["product_code"]}</span> · '
+                    f'{h["family"].title()}{" · " + h["customer"] if h["customer"] else ""}</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption(t("history_empty"))
+
+        st.divider()
+        try:
+            month_count = reclog.count_this_month()
+        except Exception:
+            month_count = 0
+        st.caption(t("history_month_count", count=month_count))
+        st.caption(t("history_disk_note"))
+
+        now = __import__("datetime").datetime.now()
+        try:
+            xlsx_bytes = reclog.month_export_xlsx(now.year, now.month)
+            st.download_button(
+                t("history_download"),
+                data=xlsx_bytes,
+                file_name=f"recomendaciones_{now.year:04d}-{now.month:02d}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+        except Exception:
+            pass
+
+
 def main() -> None:
     with st.sidebar:
         language = st.radio("🌍 Idioma / Language", list(LANGUAGES),
@@ -660,6 +823,7 @@ def main() -> None:
         st.caption(t("catalog_stats", **stats))
         if fx_table.stale:
             st.warning(t("fx_no_connection"))
+        _history_panel(t)
 
     # Navegación por radio en vez de st.tabs: st.tabs no se puede cambiar por
     # código, y el botón "Usar en la calculadora" del recomendador necesita

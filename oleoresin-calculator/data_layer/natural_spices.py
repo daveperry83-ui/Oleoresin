@@ -78,6 +78,16 @@ _DATA: List[NaturalSpice] = [
     # Nota: la oleorresina de vainilla al 25 % de vainillina no existe comercialmente
     NaturalSpice("vanilla", "Vaina de vainilla curada", "Cured vanilla bean", "vanillin", "%", 2.0, 1.5, 3.0, "Vainillina en vaina curada; el extracto concentrado varía 1–6 %, no 25 %", "Vanillin in cured bean; concentrated extract ranges 1–6%, not 25%"),
     NaturalSpice("annatto", "Achiote (semilla)", "Annatto seed", "colour", "CU", 250.0, 150.0, 400.0, "Bixina expresada como valor de color; confirmar método", "Bixin expressed as color value; confirm method"),
+    # Variedades de capsicum con SHU propio, catalogadas aparte del capsicum genérico.
+    NaturalSpice("jalapeno", "Jalapeño deshidratado", "Dried jalapeño", "scoville", "SHU", 5000.0, 2500.0, 8000.0, "Jalapeño deshidratado; rango amplio según variedad — confirmar con CoA del lote", "Dried jalapeño; wide varietal range — confirm with batch CoA"),
+    NaturalSpice("habanero", "Habanero deshidratado", "Dried habanero", "scoville", "SHU", 225000.0, 100000.0, 350000.0, "Habanero deshidratado; entre los chiles comerciales más picantes — confirmar con CoA del lote", "Dried habanero; among the hottest commercial chilies — confirm with batch CoA"),
+    NaturalSpice("chipotle", "Chipotle", "Chipotle", "scoville", "SHU", 5000.0, 2500.0, 8000.0, "Jalapeño ahumado y seco; contenido de capsaicina similar al jalapeño fresco — confirmar con CoA del lote", "Smoke-dried jalapeño; capsaicin content similar to fresh jalapeño — confirm with batch CoA"),
+    NaturalSpice("ancho", "Chile ancho", "Ancho chile", "scoville", "SHU", 1500.0, 1000.0, 2000.0, "Poblano seco (ancho); chile suave — confirmar con CoA del lote", "Dried poblano (ancho); mild chili — confirm with batch CoA"),
+    # Aceite volátil en especias de menor volumen — misma metodología que el resto de la tabla.
+    NaturalSpice("star anise", "Anís estrella", "Star anise", "volatile_oil", "%", 6.5, 5.0, 8.0, "Aceite volátil en fruto seco en forma de estrella, rico en anetol", "Volatile oil in dried star-shaped fruit, rich in anethole"),
+    NaturalSpice("juniper", "Enebro", "Juniper", "volatile_oil", "%", 1.5, 0.5, 3.0, "Aceite volátil en baya seca", "Volatile oil in dried berry"),
+    NaturalSpice("tarragon", "Estragón", "Tarragon", "volatile_oil", "%", 0.4, 0.1, 0.8, "Aceite volátil en hoja seca", "Volatile oil in dried leaf"),
+    NaturalSpice("cilantro", "Cilantro (hoja)", "Cilantro leaf", "volatile_oil", "%", 0.2, 0.1, 0.4, "Aceite volátil en hoja seca (distinto de la semilla de cilantro)", "Volatile oil in dried leaf (distinct from coriander seed)"),
 ]
 
 _BY_FAMILY: Dict[str, NaturalSpice] = {s.family: s for s in _DATA}

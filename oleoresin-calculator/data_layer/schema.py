@@ -27,6 +27,24 @@ STATUS_LABELS = {
     STATUS_CONVERTED: "Reemplazado",
 }
 
+#: Etiquetas de familia que son mezclas o categorías de producto, no un
+#: botánico único. No tienen un equivalente de especia natural con el que
+#: calcular un factor de reemplazo 1:1, así que se excluyen del selector de
+#: la calculadora y del formulario estructurado del recomendador — pero
+#: siguen siendo buscables normalmente (por nombre o código) en el
+#: recomendador de texto libre.
+NON_BOTANICAL_FAMILIES = frozenset({
+    "oleoresin blends",
+    "oil blends",
+    "other essential oil blends",
+    "other natural extractive",
+    "colours",
+    "salsa",
+    "co2 based product",
+    "organic oleoresin",
+    "pepper",
+})
+
 
 @dataclass
 class Product:

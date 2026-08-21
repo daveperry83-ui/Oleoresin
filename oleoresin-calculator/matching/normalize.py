@@ -13,11 +13,13 @@ from typing import Dict, Iterable, Set
 #: familia canónica -> alias (es / en / pt / zh / hi / botánico / comercial)
 SYNONYMS: Dict[str, Set[str]] = {
     "allspice": {"allspice", "pimento", "pimienta gorda", "pimienta dulce", "pimenta", "pimenta jamaica", "pimenta da jamaica"},
+    "ancho": {"ancho", "chile ancho", "ancho chile", "poblano seco", "dried poblano"},
     "anise": {"anise", "anis", "aniseed", "anethole", "pimpinella anisum", "anis", "anisado", "estrela de anis", "茴香", "八角"},
     "annatto": {"annatto", "achiote", "bixa orellana", "bixin", "norbixin", "urucum", "colorau"},
     "basil": {"basil", "albahaca", "ocimum basilicum", "manjericao", "罗勒", "तुलसी"},
     "bay": {"bay", "bay leaf", "laurel", "laurus nobilis", "loureiro", "月桂叶"},
     "capsicum": {"capsicum", "chile", "chili", "aji", "cayenne", "cayena", "paprika oleoresin capsicum", "capsaicin", "pimenta", "辣椒", "काली मिर्च"},
+    "carrot": {"carrot", "zanahoria", "daucus carota", "cenoura", "胡萝卜"},
     "caraway": {"caraway", "alcaravea", "carum carvi", "alcaravia", "香茴"},
     "cardamom": {"cardamom", "cardamomo", "elettaria cardamomum", "cardamomo", "绿豆蔻", "काली इलायची"},
     "cassia": {"cassia", "cinnamon", "canela", "cinnamomum", "cinnamaldehyde", "canela", "肉桂", "दालचीनी"},
